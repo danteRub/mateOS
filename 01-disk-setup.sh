@@ -4,6 +4,15 @@
 set -e
 : "${DISK:?}"
 
+# Detectar sufijo de particiones (p1 vs 1)
+if [[ "$DISK" =~ nvme.*n[0-9]$ ]]; then
+  PART1="${DISK}p1"
+  PART2="${DISK}p2"
+else
+  PART1="${DISK}1"
+  PART2="${DISK}2"
+fi
+
 echo "[+] Borrando particiones en $DISK..."
 wipefs -af "$DISK"
 sgdisk -Zo "$DISK"
@@ -14,17 +23,20 @@ parted -s "$DISK" mkpart ESP fat32 1MiB 513MiB
 parted -s "$DISK" set 1 esp on
 parted -s "$DISK" mkpart primary btrfs 513MiB 100%
 
-mkfs.fat -F32 "${DISK}p1"
-mkfs.btrfs -f "${DISK}p2"
+echo "[+] Formateando particiones..."
+mkfs.fat -F32 "$PART1"
+mkfs.btrfs -f "$PART2"
 
-mount "${DISK}p2" /mnt
+echo "[+] Creando subvolúmenes Btrfs..."
+mount "$PART2" /mnt
 btrfs subvolume create /mnt/@
 btrfs subvolume create /mnt/@home
 umount /mnt
 
-mount -o noatime,compress=zstd,subvol=@ "${DISK}p2" /mnt
+echo "[+] Montando particiones..."
+mount -o noatime,compress=zstd,subvol=@ "$PART2" /mnt
 mkdir -p /mnt/{boot,home}
-mount -o noatime,compress=zstd,subvol=@home "${DISK}p2" /mnt/home
-mount "${DISK}p1" /mnt/boot
+mount -o noatime,compress=zstd,subvol=@home "$PART2" /mnt/home
+mount "$PART1" /mnt/boot
 
 echo "[✓] Disco particionado y montado."
