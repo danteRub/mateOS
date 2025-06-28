@@ -1,0 +1,17 @@
+#!/usr/bin/env bash
+# 00-preinstall.sh - Preinstallation setup
+
+set -e
+: "${DISK:?}" "${USERNAME:?}" "${PASSWORD:?}" "${HOSTNAME:?}" "${TIMEZONE:?}" "${KEYMAP:?}"
+
+echo "[+] Configurando teclado..."
+loadkeys "$KEYMAP"
+
+echo "[+] Sincronizando hora..."
+timedatectl set-ntp true
+
+echo "[+] Configurando mirrors con reflector..."
+pacman -Sy --noconfirm reflector
+reflector --country Spain --age 12 --protocol https --sort rate --save /etc/pacman.d/mirrorlist
+
+echo "[✓] Preinstalación completada."
