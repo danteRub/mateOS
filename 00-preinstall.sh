@@ -1,17 +1,17 @@
 #!/usr/bin/env bash
-# 00-preinstall.sh - Preinstallation setup
-
 set -e
 : "${DISK:?}" "${USERNAME:?}" "${PASSWORD:?}" "${HOSTNAME:?}" "${TIMEZONE:?}" "${KEYMAP:?}"
 
 echo "[+] Configurando teclado..."
-loadkeys "$KEYMAP"
+loadkeys "$KEYMAP" || true
 
 echo "[+] Sincronizando hora..."
 timedatectl set-ntp true
 
+echo "[+] Refrescando claves y utilidades base..."
+pacman -Sy --noconfirm archlinux-keyring reflector rsync parted btrfs-progs
+
 echo "[+] Configurando mirrors con reflector..."
-pacman -Sy --noconfirm reflector
-reflector --country Spain --age 12 --protocol https --sort rate --save /etc/pacman.d/mirrorlist
+reflector --country Spain --protocol https --age 12 --sort rate --save /etc/pacman.d/mirrorlist
 
 echo "[✓] Preinstalación completada."

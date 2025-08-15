@@ -1,11 +1,18 @@
 #!/usr/bin/env bash
-# 04-postinstall.sh - Post-install config
-
 set -e
 : "${USERNAME:?}"
 
-echo '[+] Configurando entorno para el usuario...'
-echo 'eval "$(starship init zsh)"' >> /mnt/home/$USERNAME/.zshrc
-chown -R $USERNAME:$USERNAME /mnt/home/$USERNAME
+echo '[+] Post-instalación para el usuario...'
+HOME_DIR="/mnt/home/$USERNAME"
 
-echo '[✓] Post-instalación completada. Reinicia el sistema.'
+# Starship en zsh
+echo 'eval "$(starship init zsh)"' >> "$HOME_DIR/.zshrc" || true
+
+# Dotfiles si se copiaron antes
+if [[ -d "$HOME_DIR/.dotfiles" ]]; then
+  rsync -a "$HOME_DIR/.dotfiles/." "$HOME_DIR/"
+fi
+
+chown -R "$USERNAME:$USERNAME" "$HOME_DIR"
+
+echo '[✓] Post-instalación completada. Puedes reiniciar.'
