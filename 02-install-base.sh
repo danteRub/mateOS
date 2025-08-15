@@ -25,7 +25,7 @@ pacstrap -K /mnt \
   libinput seatd \
   keepassxc
 
-# (Opcional) limpiar huérfanos si los hubiera
+# Eliminar paquetes huérfanos que pacstrap añadió como dependencias opcionales
 arch-chroot /mnt pacman -Rns --noconfirm $(arch-chroot /mnt pacman -Qdtq) || true
 
 # Crear fstab
