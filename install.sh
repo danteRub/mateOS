@@ -172,7 +172,7 @@ title "Detectando GPU e instalando drivers"
 GPU_PKGS=(mesa libva-mesa-driver vulkan-icd-loader vulkan-tools)
 if lspci | grep -qi "VirtualBox"; then
   GPU_PKGS+=(virtualbox-guest-utils)
-  systemctl enable vboxservice.service
+  # systemctl enable vboxservice.service
 fi
 if lspci | grep -qi "AMD/ATI"; then
   GPU_PKGS+=(vulkan-radeon)
