@@ -17,14 +17,15 @@ pacstrap -K /mnt \
   hyprland waybar wofi alacritty \
   pipewire wireplumber pavucontrol pamixer \
   xdg-desktop-portal xdg-desktop-portal-hyprland xdg-utils \
-  ttf-jetbrains-mono-nerd starship \
   polkit-gnome brightnessctl grim slurp wl-clipboard \
   thunar file-roller \
   gtk3 gtk4 qt5ct qt6ct kvantum-qt5 lxappearance \
-  libinput libseat seatd keepassxc
+  libinput \
+  noto-fonts noto-fonts-cjk ttf-jetbrains-mono ttf-nerd-fonts-symbols
 
-# Eliminar paquetes huérfanos
-arch-chroot /mnt pacman -Rns --noconfirm $(arch-chroot /mnt pacman -Qdtq) || true
+# Eliminar paquetes huérfanos (si los hubiera)
+arch-chroot /mnt pacman -Qdtq >/dev/null 2>&1 && \
+  arch-chroot /mnt pacman -Rns --noconfirm $(arch-chroot /mnt pacman -Qdtq) || true
 
 # Crear fstab
 genfstab -U /mnt >> /mnt/etc/fstab
