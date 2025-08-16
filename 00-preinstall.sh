@@ -1,30 +1,17 @@
 #!/usr/bin/env bash
-set -Eeuo pipefail
-source ./env.sh
+# 00-preinstall.sh - Preinstallation setup
 
-need(){ command -v "$1" >/dev/null 2>&1 || { echo "Falta $1"; exit 1; }; }
-need lsblk; need awk; need sed; need sfdisk; need mkfs.fat; need btrfs; need pacman
+set -e
+: "${DISK:?}" "${USERNAME:?}" "${PASSWORD:?}" "${HOSTNAME:?}" "${TIMEZONE:?}" "${KEYMAP:?}"
 
-[[ -d /sys/firmware/efi/efivars ]] || { echo "Se requiere UEFI."; exit 1; }
+echo "[+] Configurando teclado..."
+loadkeys "$KEYMAP"
 
-# --- Comprobación de conectividad robusta (sin ICMP) ---
-have_net() {
-  # 1) ¿Tenemos ruta por defecto?
-  ip route show default >/dev/null 2>&1 || return 1
-  # 2) ¿Salimos a Internet por TCP?
-  command -v curl >/dev/null 2>&1 && \
-    curl -s --connect-timeout 5 https://1.1.1.1 >/dev/null && return 0
-  # 3) Si no hay curl, probamos con pacman a refrescar solo sincronización (rápido)
-  pacman -Sy --noconfirm >/dev/null 2>&1 && return 0
-  return 1
-}
+echo "[+] Sincronizando hora..."
+timedatectl set-ntp true
 
-if ! have_net; then
-  echo "[-] No se pudo verificar conectividad por HTTP/TCP (ICMP puede estar bloqueado)."
-  echo "    Revisa que haya ruta por defecto y DNS. Continuar puede fallar."
-  # No abortamos: deja seguir para casos con mirrors locales/caché.
-fi
+echo "[+] Configurando mirrors con reflector..."
+pacman -Sy --noconfirm reflector
+reflector --country Spain --age 12 --protocol https --sort rate --save /etc/pacman.d/mirrorlist
 
-# Hora y keyring/mirrors
-timedatectl set-ntp true || true
-pacman -Sy --noconfirm archlinux-keyring
+echo "[✓] Preinstalación completada."

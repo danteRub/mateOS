@@ -1,13 +1,11 @@
 #!/usr/bin/env bash
-set -Eeuo pipefail
-source ./env.sh
+# 04-postinstall.sh - Post-install config
 
-# Si existe carpeta ./dotfiles en el repo, copiala al HOME del usuario
-if [[ -d "./dotfiles" ]]; then
-  echo "[i] Copiando dotfiles al nuevo sistema..."
-  rsync -a --chown=1000:1000 ./dotfiles/ /mnt/home/${USERNAME}/
-fi
+set -e
+: "${USERNAME:?}"
 
-echo "[i] Sincronizando y desmontando..."
-sync
-umount -R /mnt || true
+echo '[+] Configurando entorno para el usuario...'
+echo 'eval "$(starship init zsh)"' >> /mnt/home/$USERNAME/.zshrc
+chown -R $USERNAME:$USERNAME /mnt/home/$USERNAME
+
+echo '[✓] Post-instalación completada. Reinicia el sistema.'
