@@ -1,12 +1,14 @@
 #!/usr/bin/env bash
-# 02-install-base.sh - Instalación del sistema base con Hyprland (mínimo y limpio)
-
 set -e
 : "${DISK:?}" "${USERNAME:?}" "${PASSWORD:?}" "${HOSTNAME:?}" "${TIMEZONE:?}" "${KEYMAP:?}"
 
 # Habilitar multilib si es necesario
 sed -i '/\[multilib\]/,/Include/s/^#//' /etc/pacman.conf
 pacman -Sy --noconfirm
+
+# *** Redirigir caché al disco destino para no llenar la ISO Live ***
+mkdir -p /mnt/var/cache/pacman/pkg
+mountpoint -q /var/cache/pacman/pkg || mount --bind /mnt/var/cache/pacman/pkg /var/cache/pacman/pkg
 
 echo "[+] Instalando sistema base mínimo..."
 pacstrap -K /mnt base linux linux-firmware linux-headers \
@@ -23,11 +25,12 @@ pacstrap -K /mnt \
   libinput \
   noto-fonts noto-fonts-cjk ttf-jetbrains-mono ttf-nerd-fonts-symbols
 
-# Eliminar paquetes huérfanos (si los hubiera)
-arch-chroot /mnt pacman -Qdtq >/dev/null 2>&1 && \
+# Eliminar paquetes huérfanos si los hubiera
+if arch-chroot /mnt pacman -Qdtq >/dev/null 2>&1; then
   arch-chroot /mnt pacman -Rns --noconfirm $(arch-chroot /mnt pacman -Qdtq) || true
+fi
 
-# Crear fstab
+# fstab
 genfstab -U /mnt >> /mnt/etc/fstab
 
-echo "[✓] Sistema base instalado sin paquetes extra innecesarios."
+echo "[✓] Sistema base instalado."
