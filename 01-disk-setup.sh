@@ -19,9 +19,9 @@ sgdisk -Zo "$DISK"
 
 echo "[+] Creando nueva tabla GPT..."
 parted -s "$DISK" mklabel gpt
-parted -s "$DISK" mkpart ESP fat32 1MiB 513MiB
+parted -s "$DISK" mkpart ESP fat32 1MiB 1025MiB
 parted -s "$DISK" set 1 esp on
-parted -s "$DISK" mkpart primary btrfs 513MiB 100%
+parted -s "$DISK" mkpart primary btrfs 1025MiB 100%
 
 echo "[+] Formateando particiones..."
 mkfs.fat -F32 "$PART1"
