@@ -1,6 +1,6 @@
 export DISK="/dev/sda"
-export USERNAME="user"
-export PASSWORD="example"
+export USERNAME="usuario"
+export PASSWORD="tu_clave"
 export HOSTNAME="hostname"
 export TIMEZONE="Europe/Madrid"
 export KEYMAP="es"
