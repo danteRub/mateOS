@@ -1,70 +1,334 @@
 #!/usr/bin/env bash
-# install.sh - Instalador principal de mateOS (Hyprland Edition)
-# - Pregunta datos con gum
-# - Genera env.sh con las variables
-# - Exporta variables al entorno actual
-# - Orquesta 00 → 04 y el chroot
+# install.sh - Instalador simple de mateOS (Hyprland + Wayland) para Arch Linux
+# Funciona en VM (VirtualBox/VMware/QEMU) y hardware real.
+# - UEFI -> systemd-boot
+# - BIOS -> GRUB
+# - Drivers CPU/GPU automáticos (incl. VirtualBox Guest)
+# - Hyprland + PipeWire + XDG + Qt6-wayland + GTK integrados
+# - greetd + tuigreet para login gráfico
+# - Log en /var/log/mateos-install.log (durante chroot también)
 
-set -euo pipefail
+set -Eeuo pipefail
 
-need() { command -v "$1" >/dev/null 2>&1 || { echo "[-] Falta $1"; exit 1; }; }
+### UX: log silencioso, pasos visibles, errores en pantalla
+LOG_RUNTIME="/tmp/mateos-install.log"
+exec > >(awk '{print strftime("[%H:%M:%S]"), $0; fflush() }' | tee -a "$LOG_RUNTIME") 2> >(tee -a "$LOG_RUNTIME" >&2)
 
-# --- Dependencias mínimas en la Live ISO ---
-pacman -Sy --noconfirm --needed git curl >/dev/null
-if ! command -v gum >/dev/null 2>&1; then
-  echo "[+] Instalando 'gum'..."
-  pacman -Sy --noconfirm gum
+title()  { echo; echo "==> $*"; }
+step()   { echo "-- $*"; }
+fatal()  { echo "[ERROR] $*" >&2; exit 1; }
+
+require() { command -v "$1" >/dev/null 2>&1 || fatal "Falta comando: $1"; }
+
+### Comprobaciones básicas
+[ "$(id -u)" -eq 0 ] || fatal "Ejecuta como root (usa sudo)."
+require lsblk
+require pacman
+ping -c1 -W2 archlinux.org >/dev/null 2>&1 || step "Aviso: no pude hacer ping; si tienes red, pacman funcionará igualmente."
+
+### Preguntas mínimas
+echo
+read -rp "Disco destino (ej: /dev/nvme0n1 o /dev/sda): " DISK
+[ -b "$DISK" ] || fatal "Disco inexistente: $DISK"
+
+read -rp "Hostname (ej: mateos): " HOSTNAME
+read -rp "Usuario (ej: rubrick): " USERNAME
+read -rsp "Contraseña para $USERNAME: " PASS; echo
+read -rsp "Confirma contraseña: " PASS2; echo
+[ "$PASS" = "$PASS2" ] || fatal "Las contraseñas no coinciden."
+
+read -rp "Zona horaria [Europe/Madrid]: " TIMEZONE
+TIMEZONE=${TIMEZONE:-Europe/Madrid}
+
+### Detección entorno (UEFI/BIOS)
+if [ -d /sys/firmware/efi/efivars ]; then
+  BOOT_MODE="UEFI"
+else
+  BOOT_MODE="BIOS"
+fi
+title "Modo de arranque detectado: $BOOT_MODE"
+
+### Particionado rápido (EFI 512M + raíz ext4; swap con zram)
+title "Particionando $DISK (se BORRARÁ)"
+wipefs -af "$DISK"
+sgdisk -Zo "$DISK"
+
+if [ "$BOOT_MODE" = "UEFI" ]; then
+  # 1: EFI 512MiB, 2: root resto
+  sgdisk -n1:0:+512MiB -t1:ef00 -c1:"EFI System" "$DISK"
+  sgdisk -n2:0:0       -t2:8304 -c2:"Arch Linux" "$DISK"
+  PART_EFI="${DISK}p1"; PART_ROOT="${DISK}p2"
+  # Compat disko naming for /dev/sdX
+  [[ -b "${DISK}p1" ]] || { PART_EFI="${DISK}1"; PART_ROOT="${DISK}2"; }
+else
+  # BIOS: 1: bios_grub 1MiB, 2: root resto
+  sgdisk -n1:0:+1MiB -t1:ef02 -c1:"BIOS Boot" "$DISK"
+  sgdisk -n2:0:0     -t2:8304 -c2:"Arch Linux" "$DISK"
+  PART_ROOT="${DISK}p2"
+  [[ -b "${DISK}p2" ]] || PART_ROOT="${DISK}2"
 fi
 
-# --- Recoger datos ---
-DISK=$(gum input --placeholder "/dev/nvme0n1" --prompt "Disco de destino:")
-USERNAME=$(gum input --placeholder "usuario" --prompt "Nombre de usuario:")
-PASSWORD=$(gum input --password --prompt "Contraseña para $USERNAME:")
-HOSTNAME=$(gum input --placeholder "mateos" --prompt "Hostname:")
-TIMEZONE=$(gum input --placeholder "Europe/Madrid" --prompt "Zona horaria:")
-KEYMAP=$(gum input --placeholder "es" --prompt "Layout de teclado:")
+partprobe "$DISK"
+sleep 2
 
-[ -n "$DISK" ] || { echo "[-] Debes indicar DISK"; exit 1; }
+### Formateo
+title "Formateando particiones"
+if [ "$BOOT_MODE" = "UEFI" ]; then
+  mkfs.fat -F32 "$PART_EFI"
+fi
+mkfs.ext4 -F "$PART_ROOT"
 
-gum confirm "¿Instalar Arch en $DISK para el usuario $USERNAME?" || exit 1
+### Montaje
+title "Montando sistema"
+mount "$PART_ROOT" /mnt
+mkdir -p /mnt/{boot,efi}
+if [ "$BOOT_MODE" = "UEFI" ]; then
+  mount "$PART_EFI" /mnt/boot
+fi
 
-# --- Guardar variables para el resto de scripts (env.sh) ---
-cat > env.sh <<EOF
-export DISK="$DISK"
-export USERNAME="$USERNAME"
-export PASSWORD="$PASSWORD"
-export HOSTNAME="$HOSTNAME"
-export TIMEZONE="$TIMEZONE"
-export KEYMAP="$KEYMAP"
+### Mirrors rápidos (opcional)
+step "Actualizando mirrors (opcional)"
+pacman -Sy --noconfirm pacman-contrib >/dev/null 2>&1 || true
+if command -v rankmirrors >/dev/null 2>&1; then
+  cp /etc/pacman.d/mirrorlist /etc/pacman.d/mirrorlist.bak || true
+  grep -E '^## Spain|^Server' /etc/pacman.d/mirrorlist.bak > /etc/pacman.d/mirrorlist || true
+fi
+
+### Paquetes base
+title "Instalando sistema base"
+BASE_PKGS=(
+  base base-devel linux linux-firmware linux-headers
+  mkinitcpio networkmanager sudo vim git curl
+  zram-generator
+)
+# Microcódigo CPU
+if lscpu | grep -qi "GenuineIntel"; then BASE_PKGS+=(intel-ucode); fi
+if lscpu | grep -qi "AuthenticAMD"; then BASE_PKGS+=(amd-ucode);  fi
+
+pacstrap -K /mnt "${BASE_PKGS[@]}"
+
+### fstab
+genfstab -U /mnt >> /mnt/etc/fstab
+
+### Guardar log dentro del nuevo sistema
+mkdir -p /mnt/var/log
+cp "$LOG_RUNTIME" /mnt/var/log/mateos-install.log || true
+
+### Script de configuración dentro del chroot
+cat >/mnt/root/mateos-chroot.sh <<"CHROOT"
+#!/usr/bin/env bash
+set -Eeuo pipefail
+
+title() { echo; echo "==> $*"; }
+step()  { echo "-- $*"; }
+fatal() { echo "[ERROR] $*" >&2; exit 1; }
+
+# Cargar variables pasadas por el instalador (escribimos un env file antes de chroot)
+source /root/mateos-env.sh
+
+### Zona horaria y reloj
+title "Ajustando zona horaria y reloj"
+ln -sf "/usr/share/zoneinfo/$TIMEZONE" /etc/localtime
+hwclock --systohc || true
+
+### Locale y keymap
+title "Configurando locales"
+sed -i 's/^#en_US.UTF-8/en_US.UTF-8/' /etc/locale.gen
+sed -i 's/^#es_ES.UTF-8/es_ES.UTF-8/' /etc/locale.gen
+locale-gen
+echo "LANG=es_ES.UTF-8" >/etc/locale.conf
+echo "KEYMAP=es" >/etc/vconsole.conf
+
+### Hostname y hosts
+title "Hostname"
+echo "$HOSTNAME" >/etc/hostname
+cat >/etc/hosts <<EOF
+127.0.0.1   localhost
+::1         localhost
+127.0.1.1   ${HOSTNAME}.localdomain ${HOSTNAME}
 EOF
 
-# --- Exportar también a la sesión actual ---
-# (los 00–02 se ejecutan fuera del chroot y leen del entorno)
-# shellcheck source=/dev/null
-source ./env.sh
+### Red, tiempo
+systemctl enable NetworkManager
+systemctl enable systemd-timesyncd
 
-chmod +x 00-preinstall.sh 01-disk-setup.sh 02-install-base.sh 03-chroot-setup.sh 04-postinstall.sh
+### Usuario y sudo
+title "Creando usuario"
+echo "root:${PASS}" | chpasswd
+useradd -m -G wheel,video,audio,input,storage,lp "${USERNAME}"
+echo "${USERNAME}:${PASS}" | chpasswd
+sed -i 's/^# %wheel ALL=(ALL:ALL) ALL/%wheel ALL=(ALL:ALL) ALL/' /etc/sudoers
 
-# --- Pipeline fuera del chroot ---
-./00-preinstall.sh
-./01-disk-setup.sh
-./02-install-base.sh   # este script ya hace bind del caché si lo añadiste
+### Compresor RAM (zram)
+title "Activando zram"
+cat >/etc/systemd/zram-generator.conf <<'EOF'
+[zram0]
+zram-size = ram / 2
+compression-algorithm = zstd
+EOF
 
-# --- Copiar y ejecutar la fase de chroot con variables limpias ---
-echo "[+] Copiando 03-chroot-setup.sh al chroot…"
-install -Dm755 03-chroot-setup.sh /mnt/tmp/03-chroot-setup.sh
+### Drivers gráficos y utilidades Wayland/Hyprland
+title "Detectando GPU e instalando drivers"
+GPU_PKGS=(mesa libva-mesa-driver vulkan-icd-loader vulkan-tools)
+if lspci | grep -qi "VirtualBox"; then
+  GPU_PKGS+=(virtualbox-guest-utils)
+  systemctl enable vboxservice.service
+fi
+if lspci | grep -qi "AMD/ATI"; then
+  GPU_PKGS+=(vulkan-radeon)
+fi
+if lspci | grep -qi "Intel Corporation.*(UHD|Iris|Graphics)"; then
+  GPU_PKGS+=(vulkan-intel)
+fi
+if lspci | grep -qi "NVIDIA"; then
+  # Driver propietario (open si disponible)
+  GPU_PKGS+=(nvidia nvidia-utils nvidia-settings)
+  # Wayland con NVIDIA requiere GBM habilitado en Hyprland, ya viene soportado
+fi
 
-echo "[+] Ejecutando 03 dentro del chroot…"
-arch-chroot /mnt env -i \
-  DISK="$DISK" USERNAME="$USERNAME" PASSWORD="$PASSWORD" \
-  HOSTNAME="$HOSTNAME" TIMEZONE="$TIMEZONE" KEYMAP="$KEYMAP" \
-  bash /tmp/03-chroot-setup.sh
+PAC_WM=(
+  hyprland hypridle hyprlock waybar
+  xdg-desktop-portal xdg-desktop-portal-wlr xdg-desktop-portal-hyprland
+  qt6-wayland qt6-ct kde-gtk-config
+  gtk3 gtk4 gsettings-desktop-schemas
+  pipewire wireplumber pipewire-alsa pipewire-pulse pipewire-jack
+  wl-clipboard grim slurp swappy swaybg mako
+  wofi kitty nerd-fonts noto-fonts noto-fonts-cjk ttf-jetbrains-mono
+  brightnessctl network-manager-applet
+  polkit-gnome
+  greetd tuigreet
+)
 
-# --- Post ---
-./04-postinstall.sh
+pacman -S --noconfirm --needed "${GPU_PKGS[@]}" "${PAC_WM[@]}"
 
-echo
-echo "✅ Instalación completa. Puedes reiniciar con:  reboot"
-echo "   Usuario: $USERNAME"
-echo "   Hostname: $HOSTNAME"
-echo "   Variables guardadas en ./env.sh"
+### Configurar greetd + Hyprland (login gráfico)
+title "Configurando greetd + Hyprland"
+mkdir -p /etc/greetd
+cat >/etc/greetd/config.toml <<'EOF'
+[terminal]
+vt = 1
+
+[default_session]
+command = "tuigreet --time --remember --cmd Hyprland"
+user = "greeter"
+EOF
+systemctl enable greetd
+
+### Config base de Hyprland para el usuario
+title "Configurando dotfiles mínimos para Hyprland"
+USER_HOME="/home/${USERNAME}"
+mkdir -p "${USER_HOME}/.config/hypr" "${USER_HOME}/.config/waybar" "${USER_HOME}/.config/wofi" "${USER_HOME}/.config/environment.d"
+cat >"${USER_HOME}/.config/hypr/hyprland.conf" <<'EOF'
+monitor=,preferred,auto,1
+exec-once = dbus-update-activation-environment --systemd --all
+exec-once = systemctl --user import-environment
+exec-once = waybar
+exec-once = nm-applet --indicator
+exec-once = mako
+input {
+  kb_layout = es
+}
+general {
+  gaps_in = 6
+  gaps_out = 10
+  border_size = 2
+}
+decoration {
+  rounding = 8
+  blur = yes
+}
+EOF
+
+cat >"${USER_HOME}/.config/waybar/config.jsonc" <<'EOF'
+{
+  "layer": "top",
+  "position": "top",
+  "modules-left": ["wlr/workspaces"],
+  "modules-center": ["clock"],
+  "modules-right": ["pulseaudio", "network", "battery", "tray"]
+}
+EOF
+
+cat >"${USER_HOME}/.config/wofi/config" <<'EOF'
+allow_images=true
+term=kitty
+EOF
+
+# Integración XDG + Qt/Gtk
+cat >"${USER_HOME}/.config/environment.d/10-xdg.conf" <<'EOF'
+XDG_CURRENT_DESKTOP=Hyprland
+XDG_SESSION_TYPE=wayland
+GTK_THEME=Adwaita:dark
+QT_QPA_PLATFORM=wayland
+QT_WAYLAND_DISABLE_WINDOWDECORATION=1
+EOF
+
+chown -R "${USERNAME}:${USERNAME}" "${USER_HOME}/.config"
+
+### Bootloader
+if [ -d /sys/firmware/efi/efivars ]; then
+  title "Instalando systemd-boot (UEFI)"
+  bootctl install
+  ROOT_UUID=$(blkid -s UUID -o value "$PART_ROOT")
+  KERNEL_OPTS="rw root=UUID=${ROOT_UUID} quiet loglevel=3 nowatchdog rd.udev.log_level=3"
+  # Microcode:
+  MICROCODE=""
+  if pacman -Q intel-ucode >/dev/null 2>&1; then MICROCODE="intel-ucode.img"; fi
+  if pacman -Q amd-ucode   >/dev/null 2>&1; then MICROCODE="amd-ucode.img";   fi
+
+  mkdir -p /boot/loader/entries
+  cat >/boot/loader/loader.conf <<EOF
+default arch
+timeout 3
+editor no
+EOF
+
+  cat >/boot/loader/entries/arch.conf <<EOF
+title   Arch Linux (mateOS)
+linux   /vmlinuz-linux
+initrd  /initramfs-linux.img
+EOF
+
+  if [ -n "$MICROCODE" ]; then
+    sed -i "/initrd  \\/initramfs-linux.img/i initrd  /${MICROCODE}" /boot/loader/entries/arch.conf
+  fi
+  echo "options ${KERNEL_OPTS}" >> /boot/loader/entries/arch.conf
+else
+  title "Instalando GRUB (BIOS)"
+  pacman -S --noconfirm --needed grub
+  grub-install --target=i386-pc "$DISK"
+  grub-mkconfig -o /boot/grub/grub.cfg
+fi
+
+### mkinitcpio (por si zram requiere compresión)
+sed -i 's/^HOOKS=.*/HOOKS=(base udev autodetect microcode modconf block filesystems keyboard fsck)/' /etc/mkinitcpio.conf
+mkinitcpio -P
+
+### Fin
+title "Configuración en chroot completada"
+CHROOT
+
+chmod +x /mnt/root/mateos-chroot.sh
+
+### Pasar variables necesarias al chroot
+cat >/mnt/root/mateos-env.sh <<EOF
+DISK="$DISK"
+PART_ROOT="$PART_ROOT"
+TIMEZONE="$TIMEZONE"
+HOSTNAME="$HOSTNAME"
+USERNAME="$USERNAME"
+PASS="$PASS"
+EOF
+
+### Ejecutar configuración en chroot
+title "Entrando en chroot para configurar el sistema"
+arch-chroot /mnt bash /root/mateos-chroot.sh | tee -a "$LOG_RUNTIME"
+
+### Copiar log final dentro del sistema
+cp "$LOG_RUNTIME" /mnt/var/log/mateos-install.log || true
+
+### Desmontar y reiniciar
+title "Instalación completada. Desmontando y reiniciando..."
+umount -R /mnt || true
+echo "Puedes reiniciar ahora: 'reboot'"
+reboot
