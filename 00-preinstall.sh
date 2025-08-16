@@ -1,17 +1,16 @@
 #!/usr/bin/env bash
-set -e
-: "${DISK:?}" "${USERNAME:?}" "${PASSWORD:?}" "${HOSTNAME:?}" "${TIMEZONE:?}" "${KEYMAP:?}"
+set -Eeuo pipefail
+source ./env.sh
 
-echo "[+] Configurando teclado..."
-loadkeys "$KEYMAP" || true
+need(){ command -v "$1" >/dev/null 2>&1 || { echo "Falta $1"; exit 1; }; }
 
-echo "[+] Sincronizando hora..."
-timedatectl set-ntp true
+need lsblk; need awk; need sed; need sfdisk; need mkfs.fat; need btrfs; need pacman
 
-echo "[+] Refrescando claves y utilidades base..."
-pacman -Sy --noconfirm archlinux-keyring reflector rsync parted btrfs-progs
+[[ -d /sys/firmware/efi/efivars ]] || { echo "Se requiere UEFI."; exit 1; }
+ping -c1 archlinux.org >/dev/null 2>&1 || { echo "Sin internet."; exit 1; }
 
-echo "[+] Configurando mirrors con reflector..."
-reflector --country Spain --protocol https --age 12 --sort rate --save /etc/pacman.d/mirrorlist
+# Hora
+timedatectl set-ntp true || true
 
-echo "[✓] Preinstalación completada."
+# Keyring + mirrors
+pacman -Sy --noconfirm archlinux-keyring

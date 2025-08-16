@@ -1,47 +1,66 @@
 #!/usr/bin/env bash
-# install.sh - Instalador principal interactivo de mateOS (Hyprland Edition)
+# install.sh - Wrapper principal (no requiere interacción si exportas variables)
+set -Eeuo pipefail
 
-set -euo pipefail
+# ===== Variables por defecto (puedes sobreescribirlas por entorno) =====
+: "${DISK:=}"                         # ej: /dev/nvme0n1
+: "${HOSTNAME:=mateos}"
+: "${USERNAME:=user}"
+: "${PASSWORD:=changeme}"
+: "${ROOT_PW:=root}"
+: "${TIMEZONE:=Europe/Madrid}"
+: "${KEYMAP:=es}"
+: "${LOCALE:=en_US.UTF-8}"
+: "${LOCALE2:=es_ES.UTF-8}"
+: "${BTRFS_COMPRESSION:=zstd}"
+: "${SWAPFILE_SIZE:=8G}"
 
-# Comprobar e instalar gum si es necesario
-if ! command -v gum &> /dev/null; then
-  echo "[+] Instalando 'gum'..."
-  pacman -Sy --noconfirm gum
+# ===== Soporte opcional de interfaz con 'gum' si no pasas DISK o USERNAME =====
+if ! command -v gum >/dev/null 2>&1; then
+  pacman -Sy --noconfirm gum || true
 fi
 
-# Recoger configuración del usuario
-DISK=$(gum input --placeholder "/dev/nvme0n1" --prompt "Disco de destino:")
-USERNAME=$(gum input --placeholder "usuario" --prompt "Nombre de usuario:")
-PASSWORD=$(gum input --password --prompt "Contraseña para $USERNAME:")
-HOSTNAME=$(gum input --placeholder "mateos" --prompt "Hostname:")
-TIMEZONE=$(gum input --placeholder "Europe/Madrid" --prompt "Zona horaria:")
-KEYMAP=$(gum input --placeholder "es" --prompt "Layout de teclado:")
+detect_single_disk() {
+  lsblk -dpno NAME,TYPE,TRAN | awk '$2=="disk" && $3!="usb"{print $1}'
+}
 
-# Exportar para otros scripts
-export DISK USERNAME PASSWORD HOSTNAME TIMEZONE KEYMAP
-
-# Confirmación
-gum confirm "¿Instalar Arch en $DISK como $USERNAME?" || exit 1
-
-# Ejecutar pasos previos a chroot
-./00-preinstall.sh
-./01-disk-setup.sh
-./02-install-base.sh
-
-# Copiar scripts y dotfiles al entorno montado
-install -Dm755 03-chroot-setup.sh /mnt/tmp/03-chroot-setup.sh
-if [[ -d ./dotfiles ]]; then
-  rsync -a ./dotfiles/ /mnt/tmp/dotfiles/
+if [[ -z "${DISK}" ]]; then
+  CANDS=($(detect_single_disk))
+  if [[ "${#CANDS[@]}" -eq 1 ]]; then
+    DISK="${CANDS[0]}"
+  elif command -v gum >/dev/null 2>&1; then
+    DISK=$(printf "%s\n" "${CANDS[@]}" | gum choose --limit=1 --selected="${CANDS[0]:-}")
+  fi
 fi
 
-# Ejecutar configuración dentro del chroot
-arch-chroot /mnt /bin/bash -lc "
-  export DISK='$DISK' USERNAME='$USERNAME' PASSWORD='$PASSWORD' \
-         HOSTNAME='$HOSTNAME' TIMEZONE='$TIMEZONE' KEYMAP='$KEYMAP'
-  /tmp/03-chroot-setup.sh
-"
+[[ -n "${DISK}" ]] || { echo "[-] Define DISK=/dev/xxx"; exit 1; }
 
-# Ejecutar configuración post-chroot
-./04-postinstall.sh
+# Si falta usuario/host/passes y hay gum, pedirlos
+if command -v gum >/dev/null 2>&1; then
+  USERNAME=${USERNAME:-$(gum input --placeholder "usuario" --prompt "Nombre de usuario:")}
+  PASSWORD=${PASSWORD:-$(gum input --password --prompt "Contraseña para ${USERNAME}:")}
+  ROOT_PW=${ROOT_PW:-$(gum input --password --prompt "Contraseña para root:")}
+  HOSTNAME=${HOSTNAME:-$(gum input --placeholder "mateos" --prompt "Hostname:")}
+  TIMEZONE=${TIMEZONE:-$(gum input --placeholder "Europe/Madrid" --prompt "Zona horaria:")}
+  KEYMAP=${KEYMAP:-$(gum input --placeholder "es" --prompt "Keymap:")}
+fi
 
-echo "[✓] Instalación completa. Puedes reiniciar el sistema."
+# Guardar entorno común para los sub-scripts
+cat > env.sh <<EOF
+export DISK="${DISK}"
+export HOSTNAME="${HOSTNAME}"
+export USERNAME="${USERNAME}"
+export PASSWORD="${PASSWORD}"
+export ROOT_PW="${ROOT_PW}"
+export TIMEZONE="${TIMEZONE}"
+export KEYMAP="${KEYMAP}"
+export LOCALE="${LOCALE}"
+export LOCALE2="${LOCALE2}"
+export BTRFS_COMPRESSION="${BTRFS_COMPRESSION}"
+export SWAPFILE_SIZE="${SWAPFILE_SIZE}"
+EOF
+
+chmod +x 00-preinstall.sh 01-disk-setup.sh 02-install-base.sh 03-chroot-setup.sh 04-postinstall.sh bootstrap.sh
+
+# Orquestar
+./bootstrap.sh

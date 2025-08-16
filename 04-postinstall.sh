@@ -1,18 +1,13 @@
 #!/usr/bin/env bash
-set -e
-: "${USERNAME:?}"
+set -Eeuo pipefail
+source ./env.sh
 
-echo '[+] Post-instalación para el usuario...'
-HOME_DIR="/mnt/home/$USERNAME"
-
-# Starship en zsh
-echo 'eval "$(starship init zsh)"' >> "$HOME_DIR/.zshrc" || true
-
-# Dotfiles si se copiaron antes
-if [[ -d "$HOME_DIR/.dotfiles" ]]; then
-  rsync -a "$HOME_DIR/.dotfiles/." "$HOME_DIR/"
+# Si existe carpeta ./dotfiles en el repo, copiala al HOME del usuario
+if [[ -d "./dotfiles" ]]; then
+  echo "[i] Copiando dotfiles al nuevo sistema..."
+  rsync -a --chown=1000:1000 ./dotfiles/ /mnt/home/${USERNAME}/
 fi
 
-chown -R "$USERNAME:$USERNAME" "$HOME_DIR"
-
-echo '[✓] Post-instalación completada. Puedes reiniciar.'
+echo "[i] Sincronizando y desmontando..."
+sync
+umount -R /mnt || true
