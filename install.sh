@@ -28,16 +28,26 @@ ping -c1 -W2 archlinux.org >/dev/null 2>&1 || step "Aviso: no pude hacer ping; s
 
 ### Preguntas mínimas
 echo
-read -rp "Disco destino (ej: /dev/nvme0n1 o /dev/sda): " DISK
+if [ -z "${DISK:-}" ]; then
+  read -rp "Disco destino (ej: /dev/nvme0n1 o /dev/sda): " DISK
+fi
 [ -b "$DISK" ] || fatal "Disco inexistente: $DISK"
 
-read -rp "Hostname (ej: mateos): " HOSTNAME
-read -rp "Usuario (ej: rubrick): " USERNAME
-read -rsp "Contraseña para $USERNAME: " PASS; echo
-read -rsp "Confirma contraseña: " PASS2; echo
-[ "$PASS" = "$PASS2" ] || fatal "Las contraseñas no coinciden."
+if [ -z "${HOSTNAME:-}" ]; then
+  read -rp "Hostname (ej: mateos): " HOSTNAME
+fi
+if [ -z "${USERNAME:-}" ]; then
+  read -rp "Usuario (ej: rubrick): " USERNAME
+fi
+if [ -z "${PASS:-}" ]; then
+  read -rsp "Contraseña para $USERNAME: " PASS; echo
+  read -rsp "Confirma contraseña: " PASS2; echo
+  [ "$PASS" = "$PASS2" ] || fatal "Las contraseñas no coinciden."
+fi
 
-read -rp "Zona horaria [Europe/Madrid]: " TIMEZONE
+if [ -z "${TIMEZONE:-}" ]; then
+  read -rp "Zona horaria [Europe/Madrid]: " TIMEZONE
+fi
 TIMEZONE=${TIMEZONE:-Europe/Madrid}
 
 ### Detección entorno (UEFI/BIOS)
