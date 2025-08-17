@@ -18,12 +18,15 @@ title()  { echo; echo "==> $*"; }
 step()   { echo "-- $*"; }
 fatal()  { echo "[ERROR] $*" >&2; exit 1; }
 
-require() { command -v "$1" >/dev/null 2>&1 || fatal "Falta comando: $1"; }
+require() {
+  for cmd in "$@"; do
+    command -v "$cmd" >/dev/null 2>&1 || fatal "Comando requerido no encontrado: $cmd"
+  done
+}
 
 ### Comprobaciones básicas
 [ "$(id -u)" -eq 0 ] || fatal "Ejecuta como root (usa sudo)."
-require lsblk
-require pacman
+require lsblk pacman sgdisk wipefs partprobe mkfs.fat mkfs.ext4 pacstrap
 ping -c1 -W2 archlinux.org >/dev/null 2>&1 || step "Aviso: no pude hacer ping; si tienes red, pacman funcionará igualmente."
 
 ### Preguntas mínimas
