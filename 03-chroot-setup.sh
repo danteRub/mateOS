@@ -4,8 +4,8 @@
 set -e
 : "${DISK:?}" "${USERNAME:?}" "${PASSWORD:?}" "${HOSTNAME:?}" "${TIMEZONE:?}" "${KEYMAP:?}"
 
-echo "[+] Instalando sbctl y sddm..."
-pacman -Sy --noconfirm sbctl sbsigntools sddm
+echo "[+] Instalando sddm..."
+pacman -Sy --noconfirm sddm
 
 ln -sf "/usr/share/zoneinfo/$TIMEZONE" /etc/localtime
 hwclock --systohc
@@ -58,16 +58,24 @@ EOM
 esac
 # ---------------------------------------------------------
 
-grub-install --target=x86_64-efi --efi-directory=/boot --bootloader-id=GRUB
+if [ -d /sys/firmware/efi ]; then
+  echo "[+] Entorno UEFI detectado: instalando sbctl..."
+  pacman -Sy --noconfirm sbctl sbsigntools
+  grub-install --target=x86_64-efi --efi-directory=/boot --bootloader-id=GRUB
+
+  echo "[+] Inicializando sbctl..."
+  sbctl create-keys --esp-path /boot
+  sbctl enroll-keys --microsoft-no-prompt
+  sbctl sign -s /boot/vmlinuz-linux || true
+  sbctl sign -s /boot/EFI/GRUB/grubx64.efi || true
+else
+  echo "[+] Entorno BIOS detectado"
+  grub-install --target=i386-pc "$DISK"
+fi
+
 sed -i 's/GRUB_TIMEOUT=5/GRUB_TIMEOUT=0/' /etc/default/grub
 sed -i 's/^#GRUB_DISABLE_OS_PROBER/GRUB_DISABLE_OS_PROBER=true/' /etc/default/grub
 grub-mkconfig -o /boot/grub/grub.cfg
-
-echo "[+] Inicializando sbctl..."
-sbctl create-keys --esp-path /boot
-sbctl enroll-keys --microsoft-no-prompt
-sbctl sign -s /boot/vmlinuz-linux || true
-sbctl sign -s /boot/EFI/GRUB/grubx64.efi || true
 
 systemctl enable NetworkManager
 systemctl enable systemd-timesyncd
