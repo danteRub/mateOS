@@ -10,8 +10,8 @@ install_php() {
 
   # Install Path for Composer
   if [[ ":$PATH:" != *":$HOME/.config/composer/vendor/bin:"* ]]; then
-    echo 'export PATH="$HOME/.config/composer/vendor/bin:$PATH"' >>"$HOME/.bashrc"
-    source "$HOME/.bashrc"
+    echo 'export PATH="$HOME/.config/composer/vendor/bin:$PATH"' >>"$HOME/.zshrc"
+    source "$HOME/.zshrc"
     echo "Added Composer global bin directory to PATH."
   else
     echo "Composer global bin directory already in PATH."

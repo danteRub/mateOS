@@ -1,12 +1,9 @@
 # MateOS core package list installed via install/packages.sh
 # This file is also used by the ISO builder when determining needs
 
-1password-beta
-1password-cli
 alacritty
 asdcontrol-git
 avahi
-bash-completion
 bat
 blueberry
 brightnessctl
@@ -125,3 +122,7 @@ xournalpp
 yaru-icon-theme
 yay
 zoxide
+zsh
+zsh-autosuggestions
+zsh-syntax-highlighting
+oh-my-zsh-git

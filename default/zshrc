@@ -1,0 +1,41 @@
+# Path to oh-my-zsh installation
+export ZSH="$HOME/.oh-my-zsh"
+
+# Theme - using starship instead
+ZSH_THEME=""
+
+# Plugins
+plugins=(
+  git
+  docker
+  docker-compose
+  colored-man-pages
+  command-not-found
+)
+
+source $ZSH/oh-my-zsh.sh
+
+# Load zsh-autosuggestions and zsh-syntax-highlighting from system installation
+source /usr/share/zsh/plugins/zsh-autosuggestions/zsh-autosuggestions.zsh
+source /usr/share/zsh/plugins/zsh-syntax-highlighting/zsh-syntax-highlighting.zsh
+
+# Initialize starship prompt
+eval "$(starship init zsh)"
+
+# Initialize zoxide (smarter cd)
+eval "$(zoxide init zsh)"
+
+# Initialize mise (dev tools version manager)
+eval "$(mise activate zsh)"
+
+# Initialize fzf key bindings
+source /usr/share/fzf/key-bindings.zsh
+source /usr/share/fzf/completion.zsh
+
+# User configuration
+# Add your own exports, aliases, and functions here.
+#
+# Example aliases:
+# alias p='python'
+# alias dc='docker-compose'
+
