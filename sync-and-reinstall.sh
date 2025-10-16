@@ -26,13 +26,16 @@ yay -R --noconfirm bash-completion 2>/dev/null || echo "bash-completion ya no es
 yay -R --noconfirm 1password-beta 1password-cli 2>/dev/null || echo "1password ya no está instalado"
 
 # 4. Hacer backup de configuraciones existentes
-BACKUP_DIR="$HOME/.config-backup-$(date +%Y%m%d-%H%M%S)"
+BACKUP_DIR="$HOME/old-config"
 echo "💾 Haciendo backup de configuraciones en: $BACKUP_DIR"
 mkdir -p "$BACKUP_DIR"
 
 # Backup de archivos que se van a modificar
 if [ -f ~/.zshrc ]; then
   cp ~/.zshrc "$BACKUP_DIR/zshrc.backup"
+fi
+if [ -f ~/.bashrc ]; then
+  cp ~/.bashrc "$BACKUP_DIR/bashrc.backup"
 fi
 if [ -d ~/.config/hypr ]; then
   cp -r ~/.config/hypr "$BACKUP_DIR/hypr"
