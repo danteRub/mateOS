@@ -41,6 +41,7 @@ sassc
 snapper
 webp-pixbuf-loader
 wget
+yay-debug
 zram-generator
 
 # T2 MacBook support packages
