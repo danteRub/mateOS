@@ -19,7 +19,7 @@ bash <(curl -fsSL https://raw.githubusercontent.com/danteRub/mateOS/master/boot.
 
 ## 📝 Based on
 
-MateOS is a fork of [Omarchy](https://github.com/basecamp/omarchy), customized and adapted for specific use cases.
+MateOS is built on top of Arch Linux, using only official repositories.
 
 ## 📄 License
 

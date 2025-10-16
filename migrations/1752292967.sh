@@ -10,10 +10,5 @@ if mateos-cmd-missing uwsm; then
     echo "Cleaned up .bash_profile"
   fi
 
-  if [ -f "$HOME/.config/environment.d/fcitx.conf" ]; then
-    echo "Removing GTK_IM_MODULE from fcitx config for Wayland..."
-    sed -i 's/^GTK_IM_MODULE=fcitx$//' "$HOME/.config/environment.d/fcitx.conf"
-  fi
-
   source $MATEOS_PATH/install/login/plymouth.sh
 fi

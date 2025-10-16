@@ -3,24 +3,22 @@
 # Set install mode to online since boot.sh is used for curl installations
 export MATEOS_ONLINE_INSTALL=true
 
-ansi_art='                 ▄▄▄                                                   
- ▄█████▄    ▄███████████▄    ▄███████   ▄███████   ▄███████   ▄█   █▄    ▄█   █▄ 
-███   ███  ███   ███   ███  ███   ███  ███   ███  ███   ███  ███   ███  ███   ███
-███   ███  ███   ███   ███  ███   ███  ███   ███  ███   █▀   ███   ███  ███   ███
-███   ███  ███   ███   ███ ▄███▄▄▄███ ▄███▄▄▄██▀  ███       ▄███▄▄▄███▄ ███▄▄▄███
-███   ███  ███   ███   ███ ▀███▀▀▀███ ▀███▀▀▀▀    ███      ▀▀███▀▀▀███  ▀▀▀▀▀▀███
-███   ███  ███   ███   ███  ███   ███ ██████████  ███   █▄   ███   ███  ▄██   ███
-███   ███  ███   ███   ███  ███   ███  ███   ███  ███   ███  ███   ███  ███   ███
- ▀█████▀    ▀█   ███   █▀   ███   █▀   ███   ███  ███████▀   ███   █▀    ▀█████▀ 
-                                       ███   █▀                                  '
+ansi_art='                             ███                 ███████     █████████ 
+                           ░░███               ███░░░░░███  ███░░░░░███
+ █████████████    ██████   ███████    ██████  ███     ░░███░███    ░░░ 
+░░███░░███░░███  ░░░░░███ ░░░███░    ███░░███░███      ░███░░█████████ 
+ ░███ ░███ ░███   ███████   ░███    ░███████ ░███      ░███ ░░░░░░░░███
+ ░███ ░███ ░███  ███░░███   ░███ ███░███░░░  ░░███     ███  ███    ░███
+ █████░███ █████░░████████  ░░█████ ░░██████  ░░░███████░  ░░█████████ 
+░░░░░ ░░░ ░░░░░  ░░░░░░░░    ░░░░░   ░░░░░░     ░░░░░░░     ░░░░░░░░░  '
 
 clear
 echo -e "\n$ansi_art\n"
 
 sudo pacman -Syu --noconfirm --needed git
 
-# Use custom repo if specified, otherwise default to basecamp/mateos
-MATEOS_REPO="${MATEOS_REPO:-basecamp/mateos}"
+# Use custom repo if specified, otherwise default to danteRub/mateOS
+MATEOS_REPO="${MATEOS_REPO:-danteRub/mateOS}"
 
 echo -e "\nCloning MateOS from: https://github.com/${MATEOS_REPO}.git"
 rm -rf ~/.local/share/mateos/
