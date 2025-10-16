@@ -1,0 +1,7 @@
+#!/bin/bash
+
+mateos-refresh-config hypr/autostart.conf
+mateos-refresh-config hypr/bindings.conf
+mateos-refresh-config hypr/envs.conf
+mateos-refresh-config hypr/input.conf
+mateos-refresh-config hypr/hyprland.conf

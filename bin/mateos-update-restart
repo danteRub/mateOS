@@ -1,0 +1,21 @@
+#!/bin/bash
+
+if [ "$(uname -r | sed 's/-arch/\.arch/')" != "$(pacman -Q linux | awk '{print $2}')" ]; then
+  gum confirm "Linux kernel has been updated. Reboot?" && mateos-state clear re*-required && sudo reboot now
+
+elif [ -f "$HOME/.local/state/mateos/reboot-required" ]; then
+  gum confirm "Updates require reboot. Ready?" && mateos-state clear re*-required && sudo reboot now
+
+elif [ -f "$HOME/.local/state/mateos/relaunch-required" ]; then
+  gum confirm "Updates require Hyprland relaunch. Ready?" && mateos-state clear re*-required && uwsm stop
+fi
+
+for file in "$HOME"/.local/state/mateos/restart-*-required; do
+  if [ -f "$file" ]; then
+    filename=$(basename "$file")
+    service=$(echo "$filename" | sed 's/restart-\(.*\)-required/\1/')
+    echo "Restarting $service"
+    mateos-state clear "$filename"
+    mateos-restart-"$service"
+  fi
+done

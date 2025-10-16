@@ -1,0 +1,4 @@
+#!/bin/bash
+
+mateos-refresh-config hypr/hypridle.conf
+mateos-restart-hypridle

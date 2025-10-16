@@ -1,0 +1,3 @@
+#!/bin/bash
+
+git -C "$MATEOS_PATH" describe --tags $(git -C "$MATEOS_PATH" rev-list --tags --max-count=1)

@@ -1,0 +1,5 @@
+#!/bin/bash
+
+mateos-refresh-config waybar/config.jsonc
+mateos-refresh-config waybar/style.css
+mateos-restart-waybar

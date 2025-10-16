@@ -1,0 +1,4 @@
+#!/bin/bash
+
+mateos-refresh-config hypr/hyprsunset.conf
+mateos-restart-hyprsunset

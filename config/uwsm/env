@@ -1,0 +1,11 @@
+# Changes require a relaunch of Hyprland to take effect.
+
+# Ensure MateOS bins are in the path
+export MATEOS_PATH=$HOME/.local/share/mateos
+export PATH=$MATEOS_PATH/bin/:$PATH
+
+# Set default terminal and editor
+source ~/.config/uwsm/default
+
+# Activate mise if present on the system
+mateos-cmd-present mise && eval "$(mise activate bash)"

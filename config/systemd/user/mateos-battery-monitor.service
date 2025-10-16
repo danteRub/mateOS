@@ -1,0 +1,8 @@
+[Unit]
+Description=MateOS Battery Monitor Check
+After=graphical-session.target
+
+[Service]
+Type=oneshot
+ExecStart=%h/.local/share/mateos/bin/mateos-battery-monitor
+Environment=DISPLAY=:0

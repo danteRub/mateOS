@@ -1,0 +1,4 @@
+#!/bin/bash
+
+mateos-refresh-config walker/config.toml
+mateos-restart-walker

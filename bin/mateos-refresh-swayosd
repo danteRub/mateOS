@@ -1,0 +1,5 @@
+#!/bin/bash
+
+mateos-refresh-config swayosd/config.toml
+mateos-refresh-config swayosd/style.css
+mateos-restart-swayosd

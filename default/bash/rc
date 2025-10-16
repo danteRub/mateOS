@@ -1,0 +1,7 @@
+source ~/.local/share/mateos/default/bash/shell
+source ~/.local/share/mateos/default/bash/aliases
+source ~/.local/share/mateos/default/bash/functions
+source ~/.local/share/mateos/default/bash/prompt
+source ~/.local/share/mateos/default/bash/init
+source ~/.local/share/mateos/default/bash/envs
+[[ $- == *i* ]] && bind -f ~/.local/share/mateos/default/bash/inputrc

@@ -1,0 +1,6 @@
+#!/bin/bash
+
+echo -e "\e[32mUpdate MateOS\e[0m"
+
+git -C $MATEOS_PATH pull --autostash
+git -C $MATEOS_PATH diff --check || git -C $MATEOS_PATH reset --merge
