@@ -18,12 +18,13 @@ echo ""
 
 # 2. Instalar paquetes necesarios
 echo "📦 Instalando paquetes de zsh..."
-yay -S --needed --noconfirm zsh zsh-autosuggestions zsh-syntax-highlighting oh-my-zsh-git
+yay -S --needed --noconfirm zsh oh-my-zsh-git
 
 # 3. Desinstalar paquetes antiguos
 echo "🗑️  Eliminando paquetes antiguos..."
 yay -R --noconfirm bash-completion 2>/dev/null || echo "bash-completion ya no está instalado"
 yay -R --noconfirm 1password-beta 1password-cli 2>/dev/null || echo "1password ya no está instalado"
+yay -R --noconfirm zsh-autosuggestions zsh-syntax-highlighting 2>/dev/null || echo "plugins de zsh del sistema ya no están instalados"
 
 # 4. Hacer backup de configuraciones existentes
 BACKUP_DIR="$HOME/old-config"
