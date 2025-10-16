@@ -25,16 +25,34 @@ echo "🗑️  Eliminando paquetes antiguos..."
 yay -R --noconfirm bash-completion 2>/dev/null || echo "bash-completion ya no está instalado"
 yay -R --noconfirm 1password-beta 1password-cli 2>/dev/null || echo "1password ya no está instalado"
 
-# 4. Aplicar configuraciones
-echo "🔧 Aplicando configuraciones..."
-bash ~/.local/share/mateos/install/config/config.sh
+# 4. Hacer backup de configuraciones existentes
+BACKUP_DIR="$HOME/.config-backup-$(date +%Y%m%d-%H%M%S)"
+echo "💾 Haciendo backup de configuraciones en: $BACKUP_DIR"
+mkdir -p "$BACKUP_DIR"
 
-# 5. Actualizar configuraciones de Hyprland
-echo "🎨 Actualizando configuraciones de Hyprland..."
+# Backup de archivos que se van a modificar
+if [ -f ~/.zshrc ]; then
+  cp ~/.zshrc "$BACKUP_DIR/zshrc.backup"
+fi
+if [ -d ~/.config/hypr ]; then
+  cp -r ~/.config/hypr "$BACKUP_DIR/hypr"
+fi
+
+# 5. Aplicar configuraciones
+echo "🔧 Aplicando configuraciones..."
+
+# Copiar .zshrc
+cp -f ~/.local/share/mateos/default/zshrc ~/.zshrc
+
+# Copiar configs de hyprland (en lugar de copiar todo ~/.local/share/mateos/config/*)
+mkdir -p ~/.config/hypr
 cp -f ~/.local/share/mateos/config/hypr/bindings.conf ~/.config/hypr/bindings.conf
 cp -f ~/.local/share/mateos/config/hypr/hypridle.conf ~/.config/hypr/hypridle.conf
 cp -f ~/.local/share/mateos/default/hypr/apps.conf ~/.config/hypr/apps.conf
 rm -f ~/.config/hypr/apps/1password.conf 2>/dev/null
+
+# Cambiar shell a zsh
+chsh -s /usr/bin/zsh
 
 # 6. Actualizar script de bloqueo
 echo "🔒 Actualizando script de bloqueo..."
@@ -53,6 +71,9 @@ echo "   ✓ Migrado de bash a zsh con oh-my-zsh"
 echo "   ✓ Eliminado 1password y bash-completion"
 echo "   ✓ Actualizadas configuraciones de Hyprland"
 echo "   ✓ Eliminados bindings: SUPER+/, SUPER+C, SUPER+E, SUPER+X"
+echo ""
+echo "💾 Backup guardado en: $BACKUP_DIR"
+echo "   (puedes restaurar desde ahí si algo sale mal)"
 echo ""
 echo "📌 Próximos pasos:"
 echo "   1. Cierra esta terminal"
