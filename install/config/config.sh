@@ -6,4 +6,4 @@ cp -R ~/.local/share/mateos/config/* ~/.config/
 cp ~/.local/share/mateos/default/zshrc ~/.zshrc
 
 # Set zsh as default shell
-chsh -s /usr/bin/zsh
+sudo chsh -s /usr/bin/zsh $USER
