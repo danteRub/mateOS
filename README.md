@@ -1,10 +1,27 @@
 # MateOS
 
-Turn a fresh Arch installation into a fully-configured, beautiful, and modern web development system based on Hyprland by running a single command. That's the one-line pitch for MateOS (like it was for Omakub). No need to write bespoke configs for every essential tool just to get started or to be up on all the latest command-line tools. MateOS is an opinionated take on what Linux can be at its best.
+Turn a fresh Arch installation into a fully-configured, beautiful, and modern web development system based on Hyprland by running a single command. MateOS is an opinionated Linux distribution that combines the power of Arch Linux with the elegance of Hyprland compositor.
 
-Read more at [mateos.org](https://mateos.org).
+## ✨ Features
 
-## License
+- 🎨 Beautiful and modern UI with Hyprland
+- 🚀 Optimized for web development
+- 📦 Pre-configured development environment
+- 🎯 One-command installation
+- 🛠️ Essential tools pre-installed
+- 🌈 Multiple themes included
+
+## 🚀 Installation
+
+```bash
+bash <(curl -fsSL https://raw.githubusercontent.com/danteRub/mateOS/master/boot.sh)
+```
+
+## 📝 Based on
+
+MateOS is a fork of [Omarchy](https://github.com/basecamp/omarchy), customized and adapted for specific use cases.
+
+## 📄 License
 
 MateOS is released under the [MIT License](https://opensource.org/licenses/MIT).
 
